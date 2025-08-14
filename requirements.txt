@@ -1,0 +1,4 @@
+firecrawl-py
+google-generativeai 
+requests
+python-dotenv
