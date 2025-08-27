@@ -1,17 +1,18 @@
 # Qatar Events Scraper & Analyzer
 
-A Python application that scrapes and analyzes events from various Qatar-based websites and APIs using Firecrawl and Google's Gemini AI model.
+A Python application that scrapes and analyzes events from various Qatar-based websites using Firecrawl and Google's Gemini AI model for intelligent event extraction and processing.
 
 ## Features
 
 - **Multi-source Event Collection**: Scrapes events from multiple Qatar websites
-- **Visit Qatar API Integration**: Direct API integration with Visit Qatar's events endpoint
 - **AI-Powered Analysis**: Uses Google's Gemini AI model for intelligent event extraction and processing
 - **Geocoding Support**: Automatically adds coordinates to event locations using Google Geocoding API
 - **Unix Timestamp Support**: Advanced timestamp conversion for better data consistency and deduplication
-- **Flexible Output**: Generates structured JSON files with event data
-- **Command-line Interface**: Easy-to-use CLI with different modes
+- **Flexible Output**: Generates structured JSON files with event data in multiple processing stages
+- **Command-line Interface**: Easy-to-use CLI with scraping and filtering modes
 - **Docker Support**: Complete containerized environment with Firecrawl
+- **Cultural Filtering**: Intelligent filtering for culturally appropriate events
+- **Deduplication**: Advanced deduplication using timestamps and location data
 
 ## Project Structure
 
@@ -19,105 +20,141 @@ A Python application that scrapes and analyzes events from various Qatar-based w
 Event Collection Agent/
 ├── src/                           # All Python source code
 │   ├── __init__.py               # Package initialization
-│   ├── app.py                    # Main application logic
-│   ├── config.py                 # Configuration settings
-│   ├── geolocation.py            # Geolocation functionality
-│   └── timestamp_utils.py        # Date/time processing utilities
+│   ├── app.py                    # Main application logic and scraping functionality
+│   ├── config.py                 # Configuration settings and API keys
+│   ├── filters.py                # Event filtering and cultural appropriateness logic
+│   ├── geolocation.py            # Geolocation functionality and Google Maps API integration
+│   ├── timestamp_utils.py        # Date/time processing and Unix timestamp utilities
+│   └── URL_Extraction.py         # URL extraction and processing utilities
 ├── Collected Events/             # Directory for all generated JSON event files
-│   ├── events_01_raw.json       # Raw scraped events
-│   ├── events_02_processed.json # Events with Unix timestamps
+│   ├── events_01_raw.json       # Raw scraped events (original format)
+│   ├── events_02_processed.json # Events with Unix timestamps added
 │   ├── events_03_curated.json   # Culturally filtered events
-│   └── events_04_final.json     # Final deduplicated events
+│   └── events_04_final.json     # Final deduplicated events (production ready)
 ├── cache/                        # Directory for cache files
-│   └── geolocation_cache.json   # Geolocation API cache
-├── scraped_pages/               # Directory for scraped content (created at runtime)
+│   └── geolocation_cache.json   # Geolocation API response cache
+├── scraped_pages/               # Directory for raw scraped content (created at runtime)
+├── visitqatar_test_results.json # Test results file for Visit Qatar API
 ├── main.py                      # Main entry point script
 ├── requirements.txt             # Python dependencies
 ├── Dockerfile                   # Docker configuration
-├── docker-compose.yml          # Docker Compose setup
+├── docker-compose.yml          # Docker Compose setup with Firecrawl
+├── env.example                  # Environment variables template
 └── README.md                    # Main project documentation
 ```
 
 ## Installation
 
+### Prerequisites
+
+- Python 3.11 or higher
+- Docker and Docker Compose (for containerized setup)
+- Google AI API key from [Google AI Studio](https://aistudio.google.com/)
+- Google Geocoding API key from [Google Cloud Console](https://console.cloud.google.com/)
+
 ### Option 1: Local Installation
 
-1. Clone the repository:
+1. **Clone the repository:**
 ```bash
 git clone https://github.com/khaledawsd/Testing-repo.git
-cd Testing-repo
+cd "Event Collection Agent"
 ```
 
-2. Create a virtual environment:
+2. **Create a virtual environment:**
 ```bash
+# Windows
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+venv\Scripts\activate
+
+# Linux/Mac
+python -m venv venv
+source venv/bin/activate
 ```
 
-3. Install dependencies:
+3. **Install dependencies:**
 ```bash
 pip install -r requirements.txt
 ```
 
-4. Set up required services:
-   - **Firecrawl**: Run a local Firecrawl instance (default: http://localhost:3002)
-   - **Google AI API**: Get an API key from [Google AI Studio](https://aistudio.google.com/)
-   - **Google Geocoding API**: Get an API key from [Google Cloud Console](https://console.cloud.google.com/)
+4. **Set up environment variables:**
+Create a `.env` file in the project root:
+```env
+GOOGLE_API_KEY=your_google_ai_api_key_here
+GEOCODING_API_KEY=your_google_geocoding_api_key_here
+```
 
-5. Update API keys in `app.py`:
-   - Replace `GOOGLE_API_KEY` with your Google AI API key
-   - Replace `GEOCODING_API_KEY` with your Google Geocoding API key
+5. **Start Firecrawl service:**
+```bash
+# Using Docker (recommended)
+docker run -p 3002:3002 firecrawl/firecrawl:latest
 
-### Option 2: Docker Installation
+# Or using Docker Compose (starts both Firecrawl and prepares the app)
+docker-compose up firecrawl -d
+```
+
+### Option 2: Docker Installation (Recommended)
 
 1. **Set up environment variables**:
    ```bash
    # Copy the example environment file
    cp env.example .env
-   
-   # Edit .env file with your actual API keys
+
+   # Edit .env file with your actual API keys (use any text editor)
+   # On Windows:
+   notepad .env
+   # On Linux/Mac:
    nano .env
    ```
 
-2. **Build and start the services**:
+2. **Build and start all services**:
    ```bash
    docker-compose up --build
    ```
 
+   Or run in background:
+   ```bash
+   docker-compose up --build -d
+   ```
+
 ## Usage
 
-### Running the Application
+### Quick Start
 
-#### Option 1: Using the main entry point (Recommended)
+The application supports two main modes: **scraping** (default) and **filtering**.
+
+#### 1. Full Scraping and Processing (Default Mode)
+Scrapes events from websites, processes them with AI, adds timestamps and geolocation data:
+
 ```bash
-python main.py [options]
+# Using main entry point (recommended)
+python main.py
+
+# Or directly from src directory
+cd src && python app.py
+
+# Using Docker
+docker-compose exec app python main.py
 ```
 
-#### Option 2: Running directly from src
+#### 2. Filtering and Deduplication Only
+Process existing scraped events for cultural filtering and deduplication:
+
 ```bash
-cd src
-python app.py [options]
+# Filter existing events only
+python main.py --filter-events
+
+# Using Docker
+docker-compose exec app python main.py --filter-events
 ```
 
-#### Option 3: Docker (if using Docker setup)
-```bash
-# Regular scraping mode (scrapes websites)
-docker-compose exec app python app.py
-```
+### Processing Stages
 
-### Command Line Options
+The application processes events through several stages:
 
-#### Website Scraping Mode (Default)
-Scrape events from configured websites:
-```bash
-python app.py
-```
-
-#### Filtering and Deduplication Only
-Process existing events for filtering and deduplication:
-```bash
-python app.py --filter-events
-```
+1. **Stage 1** (`events_01_raw.json`): Raw scraped events with original date/time format
+2. **Stage 2** (`events_02_processed.json`): Events with Unix timestamps added
+3. **Stage 3** (`events_03_curated.json`): Culturally filtered events
+4. **Stage 4** (`events_04_final.json`): Final deduplicated events ready for production
 
 ## Event Data Structure
 
@@ -176,19 +213,27 @@ The application generates several output files in the `Collected Events/` direct
 ## Configuration
 
 ### Target Websites
-Currently configured to scrape:
-- https://marhaba.qa/event/
-- https://www.iloveqatar.net/events
+The application is currently configured to scrape events from:
+- **ILoveQatar.net**: https://www.iloveqatar.net/events
+- **Marhaba.qa**: https://marhaba.qa/events/photo/
 
-### Environment Variables (Docker)
-Create a `.env` file in your project root:
+To modify target websites, edit the `TARGET_URLS` list in `src/config.py`.
+
+### Environment Variables
+Create a `.env` file in your project root with your API keys:
+
 ```env
-# Google AI API Key - Get from Google AI Studio
+# Required: Google AI API Key - Get from https://aistudio.google.com/
 GOOGLE_API_KEY=your_google_ai_api_key_here
 
-# Google Geocoding API Key - Get from Google Cloud Console
+# Required: Google Geocoding API Key - Get from https://console.cloud.google.com/
 GEOCODING_API_KEY=your_google_geocoding_api_key_here
 ```
+
+### Configuration Files
+- **`src/config.py`**: Main configuration file containing API settings, target URLs, and model selection
+- **`env.example`**: Template file showing required environment variables
+- **`.env`**: Your personal environment file (create from env.example)
 
 ## Timestamp Conversion Logic
 
@@ -327,12 +372,24 @@ The project uses:
 - **Improved success rate**: Now handles single-time events and TBA cases properly
 - Events with only `startTimestamp` (and `endTimestamp` as `null`) are considered valid
 
-## Testing
+## Testing & Validation
 
-Run the test suite to verify timestamp conversion:
-```bash
-python test_timestamps.py
-```
+### Test Results
+The application includes test result files for validation:
+- **`visitqatar_test_results.json`**: Contains test results for Visit Qatar API integration
+
+### Manual Testing
+To verify the application is working correctly:
+
+1. **Check API Keys**: Ensure your `.env` file contains valid API keys
+2. **Test Firecrawl**: Verify Firecrawl is running on `http://localhost:3002`
+3. **Run Small Test**: Execute the application and check the generated JSON files
+4. **Validate Output**: Check that `events_04_final.json` contains properly formatted events
+
+### Debugging
+- Check Docker logs: `docker-compose logs`
+- View application logs during execution
+- Verify API key validity in Google Cloud Console
 
 ## Troubleshooting
 
@@ -365,17 +422,6 @@ docker-compose exec app bash
 - The `.dockerignore` file excludes sensitive files from the build context
 - Firecrawl runs in a containerized environment for isolation
 - API keys are passed as environment variables
-
-## License
-
-This project is for educational and research purposes.
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
 
 ## Notes
 
