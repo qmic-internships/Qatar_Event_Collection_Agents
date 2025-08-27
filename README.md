@@ -56,8 +56,8 @@ Event Collection Agent/
 
 1. **Clone the repository:**
 ```bash
-git clone https://github.com/khaledawsd/Testing-repo.git
-cd "Event Collection Agent"
+git https://github.com/qmic-internships/Qatar_Event_Collection_Agents.git
+cd "Qatar_Event_Collection_Agents"
 ```
 
 2. **Create a virtual environment:**
