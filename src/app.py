@@ -40,8 +40,9 @@ try:
     )
     from . import geolocation
     # Import configuration from config.py
-    from .config import (
+    from config import (
         FIRECRAWL_BASE_URL,
+        FIRECRAWL_API_KEY,
         GOOGLE_API_KEY,
         TARGET_URLS,
         GEMINI_MODEL
@@ -73,6 +74,7 @@ except ImportError:
     # Import configuration from config.py
     from config import (
         FIRECRAWL_BASE_URL,
+        FIRECRAWL_API_KEY,
         GOOGLE_API_KEY,
         TARGET_URLS,
         GEMINI_MODEL
@@ -236,7 +238,7 @@ def scrape_with_pagination(app, starting_url, raw_content_dir, url_extractor,
         print(f"{geolocation.Colors.INFO}🔎 Scraping listing page {page_number}: {page_url}{geolocation.Colors.END}")
         
         try:
-            scraped = app.scrape_url(page_url, timeout=30000)
+            scraped = app.scrape(page_url, timeout=30000)
             if not scraped or not getattr(scraped, 'markdown', None):
                 print(f"{geolocation.Colors.WARNING}No markdown content for listing page: {page_url}{geolocation.Colors.END}")
                 if page_number > 1:
@@ -281,7 +283,7 @@ def scrape_with_pagination(app, starting_url, raw_content_dir, url_extractor,
             
         print(f"{geolocation.Colors.INFO}[{index}/{len(collected_event_urls)}] Scraping event: {event_url}{geolocation.Colors.END}")
         try:
-            event_scraped = app.scrape_url(event_url, timeout=30000)
+            event_scraped = app.scrape(event_url, timeout=30000)
             if not event_scraped or not getattr(event_scraped, 'markdown', None):
                 print(f"{geolocation.Colors.WARNING}No markdown content for event: {event_url}{geolocation.Colors.END}")
                 continue
@@ -329,9 +331,12 @@ def main():
         print(f"{geolocation.Colors.ERROR}Please replace the placeholder GOOGLE_API_KEY with your actual key from Google AI Studio.{geolocation.Colors.END}")
         return
     try:
-        # Initialize the FirecrawlApp to connect to your local instance.
-        # No api_key is needed when providing an api_url.
-        app = FirecrawlApp(api_url=FIRECRAWL_BASE_URL)
+        # Initialize FirecrawlApp for self-hosted or cloud.
+        # SDK 4.3.3 still requires a non-empty api_key even for self-hosted.
+        # Use a harmless placeholder when no key is provided.
+        effective_key = FIRECRAWL_API_KEY or "local"
+        app = FirecrawlApp(api_key=effective_key, api_url=FIRECRAWL_BASE_URL)
+
         # Configure the Google AI client
         genai.configure(api_key=GOOGLE_API_KEY)
         model = genai.GenerativeModel(GEMINI_MODEL)
@@ -403,7 +408,7 @@ def main():
                 # Skip generic scraping and analysis for listing pages
                 continue
             try:
-                scraped_data = app.scrape_url(target_url, timeout=30000)
+                scraped_data = app.scrape(target_url, timeout=30000)
                 if not scraped_data:
                     print(f"{geolocation.Colors.ERROR}Failed to scrape {target_url} - no data returned.{geolocation.Colors.END}")
                     failed_urls.append(target_url)

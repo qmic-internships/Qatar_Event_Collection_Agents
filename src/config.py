@@ -10,9 +10,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # --- Firecrawl Configuration for Self-Hosting ---
-# The base URL for your self-hosted Firecrawl API.
-# The default is http://localhost:3002. Change it if your setup is different.
-FIRECRAWL_BASE_URL = "http://localhost:3002"
+"""
+Firecrawl SDK recent versions allow running against self-hosted without an API key.
+We support both env var names: FIRECRAWL_BASE_URL and FIRECRAWL_API_URL.
+If either is set, we will use it and allow empty api_key.
+"""
+FIRECRAWL_BASE_URL = os.environ.get("FIRECRAWL_BASE_URL") or "http://localhost:3002"
+FIRECRAWL_API_KEY = os.environ.get("FIRECRAWL_API_KEY")
 
 # --- Google AI Configuration ---
 # Replace with your actual Google AI API key.
