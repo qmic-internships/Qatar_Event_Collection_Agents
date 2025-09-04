@@ -12,9 +12,6 @@ A Python application that scrapes and analyzes events from various Qatar-based w
 - **Command-line Interface**: Easy-to-use CLI with scraping and filtering modes
 - **Docker Support**: Complete containerized environment with Firecrawl
 - **Cultural Filtering**: Intelligent filtering for culturally appropriate events
-  - Excludes concerts/live music and bar/nightclub events
-  - Filters out band/artist-centric items (e.g., BTS, BLACKPINK, EXO, etc.) that are not suitable public events
-  - Excludes outdated/finished events based on timestamps, single dates, or date ranges
 - **Deduplication**: Advanced deduplication using timestamps and location data
 
 ## Project Structure
@@ -37,6 +34,7 @@ Event Collection Agent/
 ├── cache/                        # Directory for cache files
 │   └── geolocation_cache.json   # Geolocation API response cache
 ├── scraped_pages/               # Directory for raw scraped content (created at runtime)
+├── visitqatar_test_results.json # Test results file for Visit Qatar API
 ├── main.py                      # Main entry point script
 ├── requirements.txt             # Python dependencies
 ├── Dockerfile                   # Docker configuration
@@ -58,10 +56,8 @@ Event Collection Agent/
 
 1. **Clone the repository:**
 ```bash
-git clone https://github.com/khaledawsd/Testing-repo.git
-cd "Event Collection Agent"
-# Default branch is main
-git switch main
+git https://github.com/qmic-internships/Qatar_Event_Collection_Agents.git
+cd "Qatar_Event_Collection_Agents"
 ```
 
 2. **Create a virtual environment:**
@@ -157,7 +153,7 @@ The application processes events through several stages:
 
 1. **Stage 1** (`events_01_raw.json`): Raw scraped events with original date/time format
 2. **Stage 2** (`events_02_processed.json`): Events with Unix timestamps added
-3. **Stage 3** (`events_03_curated.json`): Culturally filtered events (excludes concerts, bar/nightlife, artist-centric items; removes finished events)
+3. **Stage 3** (`events_03_curated.json`): Culturally filtered events
 4. **Stage 4** (`events_04_final.json`): Final deduplicated events ready for production
 
 ## Event Data Structure
@@ -306,6 +302,7 @@ For events with different times on different days:
 
 ### Python Application Service
 - **Base**: Python 3.11 slim image
+- **Port**: `8000` (if needed for web interface)
 - **Purpose**: Runs the Qatar Events Scraper
 - **Dependencies**: Waits for Firecrawl to be healthy before starting
 
