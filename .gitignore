@@ -138,10 +138,17 @@ cython_debug/
 .vscode/
 
 # Project specific files
-scraped_pages/
 app_backup.py
 *.json
 !requirements.txt
+scraped_pages/
+
+# Test files
+test_image.jpg
+test_image_upload.py
+test_server.py
+test_server_requirements.txt
+test_uploads/
 
 # OS generated files
 .DS_Store

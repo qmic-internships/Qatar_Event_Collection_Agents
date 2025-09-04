@@ -56,11 +56,7 @@ try:
         extract_marhaba_event_urls,
         extract_ilq_event_urls,
         extract_event_source_url,
-        extract_ilq_visit_website_url,
-        _normalize_tokens,
-        _select_primary_event_by_slug_tokens,
-        _ilq_reconstruct_event_path_from_filename,
-        _is_u17_world_cup_individual_match
+        extract_ilq_visit_website_url
     )
 except ImportError:
     # Fall back to direct imports (when run directly)
@@ -91,11 +87,7 @@ except ImportError:
         extract_marhaba_event_urls,
         extract_ilq_event_urls,
         extract_event_source_url,
-        extract_ilq_visit_website_url,
-        _normalize_tokens,
-        _select_primary_event_by_slug_tokens,
-        _ilq_reconstruct_event_path_from_filename,
-        _is_u17_world_cup_individual_match
+        extract_ilq_visit_website_url
     )
 
 # Global flag to track if script is interrupted
@@ -129,10 +121,6 @@ def save_scraped_content(content, url, raw_content_dir):
     print(f"{geolocation.Colors.INFO}Saved content to: {filepath}{geolocation.Colors.END}")
     return filepath
 
-
-
-
-
 def add_coordinates_to_events(events):
     """Add coordinates to event locations using Google Geocoding API."""
     if not events:
@@ -147,8 +135,8 @@ def add_coordinates_to_events(events):
                 print(f"{geolocation.Colors.WARNING}⚠️  Stopping geocoding due to interrupt signal...{geolocation.Colors.END}")
                 break
                 
-            # Use locationName as primary field, fallback to location for backward compatibility
-            location_to_geocode = event.get('locationName') or event.get('location')
+            # Use locationName field
+            location_to_geocode = event.get('locationName')
             
             if location_to_geocode:
                 # Check if location already has coordinates (old format check)
@@ -165,36 +153,14 @@ def add_coordinates_to_events(events):
                     time.sleep(0.5)
                 else:
                     print(f"{geolocation.Colors.INFO}[{i}/{len(events)}] Event already has coordinates: {event.get('name', 'Unknown')}{geolocation.Colors.END}")
-                    # Convert old format to new format if possible
-                    old_location = location_to_geocode
-                    # Try to extract coordinates from old format "Location (lat, lng) name"
-                    import re
-                    coord_match = re.search(r'Location \(([^,]+), ([^)]+)\) (.+)', old_location)
-                    if coord_match:
-                        try:
-                            lat = float(coord_match.group(1))
-                            lng = float(coord_match.group(2))
-                            name = coord_match.group(3)
-                            event['locationLat'] = lat
-                            event['locationLng'] = lng
-                            event['locationName'] = name
-                        except ValueError:
-                            event['locationLat'] = None
-                            event['locationLng'] = None
-                            event['locationName'] = old_location
-                    else:
-                        event['locationLat'] = None
-                        event['locationLng'] = None
-                        event['locationName'] = old_location
+                    # Event already has coordinates, no conversion needed
             else:
-                # No location field, set defaults
+                # No locationName field, set defaults
                 event['locationLat'] = None
                 event['locationLng'] = None
                 event['locationName'] = None
                     
-            # Remove the location field from final output
-            if 'location' in event:
-                del event['location']
+
                     
     except KeyboardInterrupt:
         print(f"\n{geolocation.Colors.WARNING}⚠️  Geocoding process interrupted by user. Continuing with available data...{geolocation.Colors.END}")
@@ -331,20 +297,6 @@ def scrape_with_pagination(app, starting_url, raw_content_dir, url_extractor,
     
     print(f"{geolocation.Colors.SUCCESS}✅ Pagination scraping completed. Total events collected: {len(collected_event_urls)}{geolocation.Colors.END}")
     return collected_event_urls
-
-# Geolocation functionality has been moved to Geolocation.py module
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # --- Main Script ---
@@ -583,6 +535,12 @@ def main():
                 prompt_template = """
                 Based on the following scraped content from a Marhaba Qatar event page, extract the event details and return them in a JSON array format.
                 
+                Include ONLY culturally appropriate, upcoming or ongoing public events in Qatar. EXCLUDE:
+                - Music concerts or live music of any kind (including DJ nights and gigs)
+                - Bar/nightclub events (venues primarily serving alcohol)
+                - Band/artist-centric items (e.g., BTS, BLACKPINK, EXO, Taylor Swift, Metallica), fan meet-ups, album launches, or fan-club notices not tied to a suitable public event
+                - Outdated/finished events. Use today's date (Asia/Qatar). If the provided date/time indicates the event ended before today, do not include it.
+                
                 The event should have these exact fields:
                 - name: The event title/name
                 - date: The event date(s) in format "YYYY-MM-DD" or "YYYY-MM-DD to YYYY-MM-DD" for multi-day events
@@ -591,7 +549,15 @@ def main():
                 - locationLat: Set to null initially (will be populated with latitude coordinates)
                 - locationLng: Set to null initially (will be populated with longitude coordinates)
                 - description: A brief description of the event
-                - category: The event category (cultural, entertainment, sports, food, education, etc.)
+                - category: The event category ID. You MUST assign one of these exact category IDs based on the event type:
+                  * Amusement = 6 (for entertainment, fun activities, games, shows, performances, cultural events, festivals)
+                  * Conference = 4 (for business conferences, professional meetings, industry events, workshops)
+                  * Exhibition = 9 (for art exhibitions, trade shows, displays, showcases, galleries)
+                  * Seminar = 11 (for educational seminars, training sessions, lectures, academic events)
+                  * Others = 10 (for miscellaneous events that don't fit other categories)
+                  * Social = 7 (for social gatherings, community events, networking events, parties)
+                  * Sports = 2 (for sports events, competitions, tournaments, fitness activities)
+                  Choose the closest matching category ID based on the event's primary purpose and nature.
                 - website: The event organizer's original website URL from the direct link button (not the Marhaba page)
                 - image: The URL of the main event image/poster (extract from img tags, look for event-specific images, not logos or icons)
                 
@@ -646,6 +612,12 @@ def main():
                 prompt_template = """
                 Based on the following scraped content from an iLoveQatar event page, extract the events details and return them in a JSON array format.
                 
+                Include ONLY culturally appropriate, upcoming or ongoing public events in Qatar. EXCLUDE:
+                - Music concerts or live music of any kind (including DJ nights and gigs)
+                - Bar/nightclub events (venues primarily serving alcohol)
+                - Band/artist-centric items (e.g., BTS, BLACKPINK, EXO, Taylor Swift, Metallica), fan meet-ups, album launches, or fan-club notices not tied to a suitable public event
+                - Outdated/finished events. Use today's date (Asia/Qatar). If the provided date/time indicates the event ended before today, do not include it.
+                
                 The event should have these exact fields:
                 - name: The event title/name
                 - date: The event date(s) in format "YYYY-MM-DD" or "YYYY-MM-DD to YYYY-MM-DD" for multi-day events
@@ -654,7 +626,15 @@ def main():
                 - locationLat: Set to null initially (will be populated with latitude coordinates)
                 - locationLng: Set to null initially (will be populated with longitude coordinates)
                 - description: A brief description of the event
-                - category: The event category (cultural, entertainment, sports, food, education, etc.)
+                - category: The event category ID. You MUST assign one of these exact category IDs based on the event type:
+                  * Amusement = 6 (for entertainment, fun activities, games, shows, performances, cultural events, festivals)
+                  * Conference = 4 (for business conferences, professional meetings, industry events, workshops)
+                  * Exhibition = 9 (for art exhibitions, trade shows, displays, showcases, galleries)
+                  * Seminar = 11 (for educational seminars, training sessions, lectures, academic events)
+                  * Others = 10 (for miscellaneous events that don't fit other categories)
+                  * Social = 7 (for social gatherings, community events, networking events, parties)
+                  * Sports = 2 (for sports events, competitions, tournaments, fitness activities)
+                  Choose the closest matching category ID based on the event's primary purpose and nature.
                 - website: The event organizer's original website URL from the direct link button (not the iLoveQatar page)
                 - image: The URL of the main event image/poster (extract from img tags, look for event-specific images, not logos or icons)
                 
@@ -703,6 +683,12 @@ def main():
                 prompt_template = """
                 Based on the following scraped content from an events page, extract all event details and return them in a JSON array format.
                 
+                Include ONLY culturally appropriate, upcoming or ongoing public events in Qatar. EXCLUDE:
+                - Music concerts or live music of any kind (including DJ nights and gigs)
+                - Bar/nightclub events (venues primarily serving alcohol)
+                - Band/artist-centric items (e.g., BTS, BLACKPINK, EXO, Taylor Swift, Metallica), fan meet-ups, album launches, or fan-club notices not tied to a suitable public event
+                - Outdated/finished events. Use today's date (Asia/Qatar). If the provided date/time indicates the event ended before today, do not include it.
+                
                 Each event should have these exact fields:
                 - name: The event title/name
                 - date: The event date(s) in format "YYYY-MM-DD" or "YYYY-MM-DD to YYYY-MM-DD" for multi-day events
@@ -711,7 +697,15 @@ def main():
                 - locationLat: Set to null initially (will be populated with latitude coordinates)
                 - locationLng: Set to null initially (will be populated with longitude coordinates)
                 - description: A brief description of the event
-                - category: The event category (cultural, entertainment, sports, food, education, etc.)
+                - category: The event category ID. You MUST assign one of these exact category IDs based on the event type:
+                  * Amusement = 6 (for entertainment, fun activities, games, shows, performances, cultural events, festivals)
+                  * Conference = 4 (for business conferences, professional meetings, industry events, workshops)
+                  * Exhibition = 9 (for art exhibitions, trade shows, displays, showcases, galleries)
+                  * Seminar = 11 (for educational seminars, training sessions, lectures, academic events)
+                  * Others = 10 (for miscellaneous events that don't fit other categories)
+                  * Social = 7 (for social gatherings, community events, networking events, parties)
+                  * Sports = 2 (for sports events, competitions, tournaments, fitness activities)
+                  Choose the closest matching category ID based on the event's primary purpose and nature.
                 - website: The event organizer's original website URL (not the current page URL)
                 - image: The URL of the main event image/poster (extract from img tags, look for event-specific images, not logos or icons)
                 

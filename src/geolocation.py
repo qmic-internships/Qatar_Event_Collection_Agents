@@ -37,64 +37,6 @@ GEOLOCATION_CACHE_FILE = os.path.join(_cache_dir, 'geolocation_cache.json')
 _geolocation_cache = None
 _geolocation_cache_lock = threading.Lock()
 
-def migrate_old_cache_format(cache):
-    """Migrate old cache format to new format with separate lat, lng, name fields."""
-    migrated_cache = {}
-    for location_name, value in cache.items():
-        if isinstance(value, str):
-            # Old format: "lat|lng|name"
-            if '|' in value:
-                parts = value.split('|')
-                if len(parts) >= 3:
-                    try:
-                        lat = float(parts[0])
-                        lng = float(parts[1])
-                        name = parts[2]
-                        migrated_cache[location_name] = {
-                            "lat": lat,
-                            "lng": lng,
-                            "name": name
-                        }
-                    except ValueError:
-                        # If conversion fails, keep as is but with null coordinates
-                        migrated_cache[location_name] = {
-                            "lat": None,
-                            "lng": None,
-                            "name": location_name
-                        }
-                else:
-                    migrated_cache[location_name] = {
-                        "lat": None,
-                        "lng": None,
-                        "name": location_name
-                    }
-            else:
-                # Single string value, treat as name only
-                migrated_cache[location_name] = {
-                    "lat": None,
-                    "lng": None,
-                    "name": value
-                }
-        elif isinstance(value, dict):
-            # Already in new format
-            if 'lat' in value and 'lng' in value and 'name' in value:
-                migrated_cache[location_name] = value
-            else:
-                # Partial new format, complete it
-                migrated_cache[location_name] = {
-                    "lat": value.get('lat'),
-                    "lng": value.get('lng'),
-                    "name": value.get('name', location_name)
-                }
-        else:
-            # Unknown format, treat as name only
-            migrated_cache[location_name] = {
-                "lat": None,
-                "lng": None,
-                "name": location_name
-            }
-    return migrated_cache
-
 def load_geolocation_cache():
     """Load geolocation cache from JSON file with thread safety."""
     global _geolocation_cache
@@ -104,10 +46,6 @@ def load_geolocation_cache():
         with open(GEOLOCATION_CACHE_FILE, 'r', encoding='utf-8') as f:
             try:
                 _geolocation_cache = json.load(f)
-                # Migrate old format to new format if needed
-                _geolocation_cache = migrate_old_cache_format(_geolocation_cache)
-                # Save migrated cache back to file
-                save_geolocation_cache()
             except Exception:
                 _geolocation_cache = {}
     else:

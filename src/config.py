@@ -32,4 +32,3 @@ TARGET_URLS = [
 # The Gemini model to use
 GEMINI_MODEL = 'gemini-2.5-flash-lite'
 
-# Colors are now imported from Geolocation module
